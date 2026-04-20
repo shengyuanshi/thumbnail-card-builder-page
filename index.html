@@ -36,6 +36,30 @@
         padding: 24px;
       }
 
+      body.render-mode {
+        display: block;
+        padding: 0;
+        background: transparent;
+        width: var(--frame-w);
+        min-width: var(--frame-w);
+        max-width: var(--frame-w);
+        height: var(--frame-h);
+        min-height: var(--frame-h);
+        max-height: var(--frame-h);
+        overflow: hidden;
+      }
+
+      html.render-mode {
+        width: var(--frame-w);
+        min-width: var(--frame-w);
+        max-width: var(--frame-w);
+        height: var(--frame-h);
+        min-height: var(--frame-h);
+        max-height: var(--frame-h);
+        overflow: hidden;
+        background: transparent;
+      }
+
       .panel {
         background: var(--panel-bg);
         border: 1px solid var(--panel-stroke);
@@ -53,6 +77,10 @@
         align-self: start;
         position: sticky;
         top: 24px;
+      }
+
+      body.render-mode .controls {
+        display: none;
       }
 
       .controls h1 {
@@ -135,6 +163,26 @@
         overflow: auto;
       }
 
+      body.render-mode .preview-shell {
+        position: fixed;
+        inset: 0;
+        width: var(--frame-w);
+        height: var(--frame-h);
+        padding: 0;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        overflow: hidden;
+        opacity: 0;
+      }
+
+      body.render-mode[data-ready="1"] .preview-shell {
+        opacity: 1;
+      }
+
       .preview-stage {
         width: 100%;
         min-width: 0;
@@ -142,6 +190,16 @@
         justify-content: center;
         align-items: flex-start;
         overflow: auto;
+      }
+
+      body.render-mode .preview-stage {
+        width: var(--frame-w);
+        height: var(--frame-h);
+        justify-content: flex-start;
+        align-items: flex-start;
+        overflow: hidden;
+        min-width: var(--frame-w) !important;
+        min-height: var(--frame-h) !important;
       }
 
       .preview-card {
@@ -157,6 +215,11 @@
 
       .preview-card.is-ready {
         transform: scale(var(--preview-render-scale, 0.36));
+      }
+
+      body.render-mode .preview-card.is-ready {
+        transform: none;
+        box-shadow: none;
       }
 
       .bg-layer,
@@ -210,6 +273,7 @@
       }
 
       .hero {
+        position: relative;
         height: 578px;
         border-radius: 30px;
         overflow: hidden;
@@ -220,11 +284,32 @@
       }
 
       .hero img {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
         display: block;
         object-fit: cover;
         object-position: center center;
+      }
+
+      .hero-video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center center;
+        display: none;
+        background: transparent;
+      }
+
+      .hero.is-video .hero-image {
+        display: none;
+      }
+
+      .hero.is-video .hero-video {
+        display: block;
       }
 
       .prompt-card {
@@ -383,7 +468,8 @@
           <div class="bg-tint"></div>
           <div class="preview-content">
             <div class="hero">
-              <img id="heroPreview" src="./assets/hero.png" alt="Hero preview" />
+              <img class="hero-image" id="heroPreview" src="./assets/hero.png" alt="Hero preview" />
+              <video class="hero-video" id="heroVideo" muted playsinline preload="auto"></video>
             </div>
 
             <div class="prompt-card">
@@ -412,6 +498,8 @@
     <script>
       const defaults = {
         heroSrc: "./assets/hero.png",
+        heroVideoSrc: "",
+        heroMode: "image",
         prompt: "Design a packaging story page for a premium dark chocolate brand, inspired by Naïve Art and the jungle paintings of Henri Rousseau. The aesthetic is lush, dreamlike, and exotic. The imagery depicts oversized tropical leaves and mysterious animals hiding in the dark green foliage, with the chocolate bar resting like a hidden treasure in the center.",
         title: "A jungle-themed chocolate website",
         subtitle: "Made with K2.6"
@@ -430,12 +518,15 @@
       const titlePreview = document.getElementById("titlePreview");
       const subtitlePreview = document.getElementById("subtitlePreview");
       const heroPreview = document.getElementById("heroPreview");
+      const heroVideo = document.getElementById("heroVideo");
+      const heroContainer = document.querySelector(".hero");
       const previewCard = document.getElementById("previewCard");
       const previewStage = document.getElementById("previewStage");
       const downloadBtn = document.getElementById("downloadBtn");
       const resetBtn = document.getElementById("resetBtn");
       const exportCanvas = document.getElementById("exportCanvas");
       const logoSrc = "./assets/kimi-icon-rounded-corner.png";
+      const isRenderMode = new URLSearchParams(window.location.search).get("render") === "1";
 
       function setBackground(src) {
         const backgroundImage = `url("${src}")`;
@@ -445,6 +536,12 @@
       }
 
       function syncScale() {
+        if (isRenderMode) {
+          previewCard.style.setProperty("--preview-render-scale", "1");
+          previewStage.style.minHeight = "1920px";
+          previewStage.style.minWidth = "1080px";
+          return;
+        }
         const shell = previewStage.parentElement;
         const availableWidth = Math.max(320, (shell?.clientWidth || 900) - 24);
         const availableHeight = Math.max(480, (window.innerHeight || 1200) - 120);
@@ -458,7 +555,19 @@
         promptPreview.textContent = state.prompt;
         titlePreview.textContent = state.title;
         subtitlePreview.textContent = state.subtitle;
-        heroPreview.src = state.heroSrc;
+        if (state.heroMode === "video") {
+          heroContainer.classList.add("is-video");
+          heroVideo.src = state.heroVideoSrc;
+          heroVideo.currentTime = 0;
+          heroVideo.loop = false;
+          heroVideo.pause();
+        } else {
+          heroContainer.classList.remove("is-video");
+          heroPreview.src = state.heroSrc;
+          heroVideo.pause();
+          heroVideo.removeAttribute("src");
+          heroVideo.load();
+        }
         setBackground(state.heroSrc);
         syncScale();
       }
@@ -476,6 +585,7 @@
         const file = input.files && input.files[0];
         if (!file) return;
         state[key] = await readFileAsDataURL(file);
+        state.heroMode = "image";
         syncView();
       }
 
@@ -502,6 +612,16 @@
         return new Promise((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+
+      function waitForAssetLoad(src) {
+        if (!src) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve();
           img.onerror = reject;
           img.src = src;
         });
@@ -644,8 +764,52 @@
         titleInput.value = defaults.title;
         subtitleInput.value = defaults.subtitle;
         heroInput.value = "";
+        state.heroMode = "image";
+        state.heroVideoSrc = "";
         syncView();
       });
+
+      if (isRenderMode) {
+        document.documentElement.classList.add("render-mode");
+        document.body.classList.add("render-mode");
+      }
+
+      window.cardBuilder = {
+        async setState(nextState = {}) {
+          Object.assign(state, nextState);
+          if (nextState.heroSrc || nextState.heroMode === "image") {
+            state.heroMode = nextState.heroMode || "image";
+          }
+          if (nextState.heroVideoSrc) {
+            state.heroMode = "video";
+          }
+          if (state.heroSrc) {
+            await waitForAssetLoad(state.heroSrc);
+          }
+          syncView();
+          if (isRenderMode) {
+            document.body.dataset.ready = "1";
+          }
+          if (state.heroMode === "video" && state.heroVideoSrc) {
+            await new Promise((resolve) => {
+              const done = () => resolve();
+              if (heroVideo.readyState >= 2) {
+                done();
+                return;
+              }
+              heroVideo.onloadeddata = done;
+            });
+          }
+        },
+        async playHeroVideo() {
+          if (state.heroMode !== "video") return;
+          heroVideo.currentTime = 0;
+          await heroVideo.play();
+        },
+        getState() {
+          return { ...state };
+        }
+      };
 
       new ResizeObserver(() => syncScale()).observe(previewStage);
       window.addEventListener("resize", syncScale);
