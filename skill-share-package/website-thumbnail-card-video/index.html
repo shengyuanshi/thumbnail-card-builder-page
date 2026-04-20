@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thumbnail Card Builder</title>
+    <style>
+      :root {
+        --editor-bg: #11130c;
+        --panel-bg: rgba(27, 29, 21, 0.92);
+        --panel-stroke: rgba(255, 255, 255, 0.08);
+        --soft-text: rgba(245, 239, 224, 0.68);
+        --frame-w: 1080px;
+        --frame-h: 1920px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top center, rgba(252, 214, 94, 0.15), transparent 22%),
+          linear-gradient(180deg, #3f4518 0%, var(--editor-bg) 100%);
+        color: #f5efe0;
+        font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+      }
+
+      body {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 24px;
+        padding: 24px;
+      }
+
+      body.render-mode {
+        display: block;
+        padding: 0;
+        background: transparent;
+        width: var(--frame-w);
+        min-width: var(--frame-w);
+        max-width: var(--frame-w);
+        height: var(--frame-h);
+        min-height: var(--frame-h);
+        max-height: var(--frame-h);
+        overflow: hidden;
+      }
+
+      html.render-mode {
+        width: var(--frame-w);
+        min-width: var(--frame-w);
+        max-width: var(--frame-w);
+        height: var(--frame-h);
+        min-height: var(--frame-h);
+        max-height: var(--frame-h);
+        overflow: hidden;
+        background: transparent;
+      }
+
+      .panel {
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-stroke);
+        border-radius: 24px;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+      }
+
+      .controls {
+        padding: 22px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-self: start;
+        position: sticky;
+        top: 24px;
+      }
+
+      body.render-mode .controls {
+        display: none;
+      }
+
+      .controls h1 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.03em;
+      }
+
+      .controls p {
+        margin: 0;
+        color: var(--soft-text);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .field label {
+        font-size: 13px;
+        color: rgba(245, 239, 224, 0.88);
+      }
+
+      .field input[type="text"],
+      .field textarea,
+      .field input[type="file"] {
+        width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #f5efe0;
+        padding: 12px 14px;
+        font: inherit;
+      }
+
+      .field textarea {
+        min-height: 144px;
+        resize: vertical;
+        line-height: 1.45;
+      }
+
+      .field input[type="file"] {
+        padding: 10px 12px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 16px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: #f3ead2;
+        color: #11130c;
+        font-weight: 600;
+      }
+
+      .secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #f5efe0;
+      }
+
+      .preview-shell {
+        min-width: 0;
+        padding: 28px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        overflow: auto;
+      }
+
+      body.render-mode .preview-shell {
+        position: fixed;
+        inset: 0;
+        width: var(--frame-w);
+        height: var(--frame-h);
+        padding: 0;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        overflow: hidden;
+        opacity: 0;
+      }
+
+      body.render-mode[data-ready="1"] .preview-shell {
+        opacity: 1;
+      }
+
+      .preview-stage {
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        overflow: auto;
+      }
+
+      body.render-mode .preview-stage {
+        width: var(--frame-w);
+        height: var(--frame-h);
+        justify-content: flex-start;
+        align-items: flex-start;
+        overflow: hidden;
+        min-width: var(--frame-w) !important;
+        min-height: var(--frame-h) !important;
+      }
+
+      .preview-card {
+        position: relative;
+        width: var(--frame-w);
+        height: var(--frame-h);
+        overflow: hidden;
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+        background: #363c14;
+        transform-origin: top center;
+        flex: 0 0 auto;
+      }
+
+      .preview-card.is-ready {
+        transform: scale(var(--preview-render-scale, 0.36));
+      }
+
+      body.render-mode .preview-card.is-ready {
+        transform: none;
+        box-shadow: none;
+      }
+
+      .bg-layer,
+      .bg-blur {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      .bg-layer {
+        z-index: 0;
+      }
+
+      .bg-blur {
+        transform: scale(1.12);
+        filter: blur(22px);
+        opacity: 0.96;
+        z-index: 0;
+      }
+
+      .bg-glow {
+        position: absolute;
+        inset: 0;
+        transform: scale(1.06);
+        filter: blur(56px);
+        opacity: 0.42;
+        z-index: 0;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      .bg-tint {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background:
+          linear-gradient(180deg, rgba(255, 252, 242, 0.08), rgba(255, 252, 242, 0.02)),
+          radial-gradient(circle at top center, rgba(252, 214, 94, 0.18), transparent 22%);
+      }
+
+      .preview-content {
+        position: absolute;
+        inset: 0;
+        padding: 104px 42px 0;
+        display: flex;
+        flex-direction: column;
+        z-index: 1;
+      }
+
+      .hero {
+        position: relative;
+        height: 578px;
+        border-radius: 30px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.12);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+          0 18px 38px rgba(36, 26, 10, 0.14);
+      }
+
+      .hero img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        object-position: center center;
+      }
+
+      .hero-video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center center;
+        display: none;
+        background: transparent;
+      }
+
+      .hero.is-video .hero-image {
+        display: none;
+      }
+
+      .hero.is-video .hero-video {
+        display: block;
+      }
+
+      .prompt-card {
+        margin-top: 62px;
+        margin-left: 25px;
+        margin-right: 25px;
+        border-radius: 36px;
+        padding: 52px 78px 42px;
+        background: rgba(181, 191, 117, 0.24);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+
+      .prompt-copy {
+        font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+        font-size: 32px;
+        line-height: 1.34;
+        text-align: center;
+        white-space: pre-wrap;
+      }
+
+      .brand-lockup {
+        margin-top: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .brand-pill {
+        background: #111;
+        color: #fff;
+        border-radius: 999px;
+        padding: 4px 14px 5px;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .brand-word {
+        color: #111;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .footer {
+        margin-top: auto;
+        height: 429px;
+        background: rgba(255, 255, 255, 0.96);
+        margin-left: -42px;
+        margin-right: -42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 34px;
+      }
+
+      .footer-badge {
+        width: 119.518px;
+        height: 119.518px;
+        border-radius: 27.8874px;
+        background: #000;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .footer-copy {
+        text-align: center;
+        color: #8d8677;
+        font-family: "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+        font-size: 37.28px;
+        line-height: 47.9px;
+      }
+
+      .footer-copy strong {
+        display: block;
+        color: #615d52;
+        font-weight: 600;
+      }
+
+      .footer-badge img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: var(--soft-text);
+        line-height: 1.45;
+      }
+
+      canvas {
+        display: none;
+      }
+
+      @media (max-width: 1100px) {
+        body {
+          grid-template-columns: 1fr;
+        }
+
+        .controls {
+          position: static;
+        }
+
+        .preview-shell {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="controls panel">
+      <h1>Thumbnail Card Builder</h1>
+      <p>Upload one image, then edit the prompt and title to generate the card. The same image is used for the hero block and the blurred background.</p>
+
+      <div class="field">
+        <label for="heroInput">Card Image</label>
+        <input id="heroInput" type="file" accept="image/*" />
+      </div>
+
+      <div class="field">
+        <label for="promptInput">Prompt</label>
+        <textarea id="promptInput">Design a packaging story page for a premium dark chocolate brand, inspired by Naïve Art and the jungle paintings of Henri Rousseau. The aesthetic is lush, dreamlike, and exotic. The imagery depicts oversized tropical leaves and mysterious animals hiding in the dark green foliage, with the chocolate bar resting like a hidden treasure in the center.</textarea>
+      </div>
+
+      <div class="field">
+        <label for="titleInput">Title</label>
+        <input id="titleInput" type="text" value="A jungle-themed chocolate website" />
+      </div>
+
+      <div class="field">
+        <label for="subtitleInput">Subtitle</label>
+        <input id="subtitleInput" type="text" value="Made with K2.6" />
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="downloadBtn">Download PNG</button>
+        <button class="secondary" id="resetBtn">Reset</button>
+      </div>
+
+      <p class="hint">The uploaded image is used once: as the hero block and as the center-cropped blurred background.</p>
+      <p class="hint">Prompt uses Inter Regular 32. Footer text uses PingFang SC at 37.28 with 47.9 line height to match the Figma typography you provided.</p>
+    </aside>
+
+    <main class="preview-shell panel">
+      <div class="preview-stage" id="previewStage">
+        <section class="preview-card is-ready" id="previewCard">
+          <div class="bg-layer" id="bgLayer"></div>
+          <div class="bg-blur" id="bgBlur"></div>
+          <div class="bg-glow" id="bgGlow"></div>
+          <div class="bg-tint"></div>
+          <div class="preview-content">
+            <div class="hero">
+              <img class="hero-image" id="heroPreview" src="./assets/hero.png" alt="Hero preview" />
+              <video class="hero-video" id="heroVideo" muted playsinline preload="auto"></video>
+            </div>
+
+            <div class="prompt-card">
+              <div class="prompt-copy" id="promptPreview"></div>
+              <div class="brand-lockup">
+                <span class="brand-pill">KIMI</span>
+                <span class="brand-word">Agent</span>
+              </div>
+            </div>
+
+            <footer class="footer">
+              <div class="footer-badge" aria-hidden="true">
+                <img src="./assets/kimi-icon-rounded-corner.png" alt="" />
+              </div>
+              <div class="footer-copy">
+                <span id="titlePreview"></span>
+                <strong id="subtitlePreview"></strong>
+              </div>
+            </footer>
+          </div>
+        </section>
+      </div>
+      <canvas id="exportCanvas" width="1080" height="1920"></canvas>
+    </main>
+
+    <script>
+      const defaults = {
+        heroSrc: "./assets/hero.png",
+        heroVideoSrc: "",
+        heroMode: "image",
+        prompt: "Design a packaging story page for a premium dark chocolate brand, inspired by Naïve Art and the jungle paintings of Henri Rousseau. The aesthetic is lush, dreamlike, and exotic. The imagery depicts oversized tropical leaves and mysterious animals hiding in the dark green foliage, with the chocolate bar resting like a hidden treasure in the center.",
+        title: "A jungle-themed chocolate website",
+        subtitle: "Made with K2.6"
+      };
+
+      const state = { ...defaults };
+
+      const heroInput = document.getElementById("heroInput");
+      const promptInput = document.getElementById("promptInput");
+      const titleInput = document.getElementById("titleInput");
+      const subtitleInput = document.getElementById("subtitleInput");
+      const bgLayer = document.getElementById("bgLayer");
+      const bgBlur = document.getElementById("bgBlur");
+      const bgGlow = document.getElementById("bgGlow");
+      const promptPreview = document.getElementById("promptPreview");
+      const titlePreview = document.getElementById("titlePreview");
+      const subtitlePreview = document.getElementById("subtitlePreview");
+      const heroPreview = document.getElementById("heroPreview");
+      const heroVideo = document.getElementById("heroVideo");
+      const heroContainer = document.querySelector(".hero");
+      const previewCard = document.getElementById("previewCard");
+      const previewStage = document.getElementById("previewStage");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const exportCanvas = document.getElementById("exportCanvas");
+      const logoSrc = "./assets/kimi-icon-rounded-corner.png";
+      const isRenderMode = new URLSearchParams(window.location.search).get("render") === "1";
+
+      function setBackground(src) {
+        const backgroundImage = `url("${src}")`;
+        bgLayer.style.backgroundImage = backgroundImage;
+        bgBlur.style.backgroundImage = backgroundImage;
+        bgGlow.style.backgroundImage = backgroundImage;
+      }
+
+      function syncScale() {
+        if (isRenderMode) {
+          previewCard.style.setProperty("--preview-render-scale", "1");
+          previewStage.style.minHeight = "1920px";
+          previewStage.style.minWidth = "1080px";
+          return;
+        }
+        const shell = previewStage.parentElement;
+        const availableWidth = Math.max(320, (shell?.clientWidth || 900) - 24);
+        const availableHeight = Math.max(480, (window.innerHeight || 1200) - 120);
+        const scale = Math.min(1, availableWidth / 1080, availableHeight / 1920);
+        previewCard.style.setProperty("--preview-render-scale", scale.toFixed(4));
+        previewStage.style.minHeight = `${1920 * scale}px`;
+        previewStage.style.minWidth = `${1080 * scale}px`;
+      }
+
+      function syncView() {
+        promptPreview.textContent = state.prompt;
+        titlePreview.textContent = state.title;
+        subtitlePreview.textContent = state.subtitle;
+        if (state.heroMode === "video") {
+          heroContainer.classList.add("is-video");
+          heroVideo.src = state.heroVideoSrc;
+          heroVideo.currentTime = 0;
+          heroVideo.loop = false;
+          heroVideo.pause();
+        } else {
+          heroContainer.classList.remove("is-video");
+          heroPreview.src = state.heroSrc;
+          heroVideo.pause();
+          heroVideo.removeAttribute("src");
+          heroVideo.load();
+        }
+        setBackground(state.heroSrc);
+        syncScale();
+      }
+
+      function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function handleImageInput(input, key) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        state[key] = await readFileAsDataURL(file);
+        state.heroMode = "image";
+        syncView();
+      }
+
+      function wrapText(ctx, text, maxWidth) {
+        const words = text.split(/\s+/).filter(Boolean);
+        const lines = [];
+        let line = "";
+
+        for (const word of words) {
+          const testLine = line ? `${line} ${word}` : word;
+          if (ctx.measureText(testLine).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = testLine;
+          }
+        }
+
+        if (line) lines.push(line);
+        return lines;
+      }
+
+      function loadImage(src) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+
+      function waitForAssetLoad(src) {
+        if (!src) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+
+      function roundedRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+      }
+
+      function drawCoverImage(ctx, img, x, y, width, height) {
+        const scale = Math.max(width / img.width, height / img.height);
+        const drawWidth = img.width * scale;
+        const drawHeight = img.height * scale;
+        const dx = x + (width - drawWidth) / 2;
+        const dy = y + (height - drawHeight) / 2;
+        ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+      }
+
+      async function exportPNG() {
+        const ctx = exportCanvas.getContext("2d");
+        const [bgImg, heroImg] = await Promise.all([
+          loadImage(state.heroSrc),
+          loadImage(state.heroSrc)
+        ]);
+        const logoImg = await loadImage(logoSrc);
+
+        ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        ctx.save();
+        ctx.filter = "blur(22px)";
+        drawCoverImage(ctx, bgImg, -60, -60, 1200, 2040);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = 0.44;
+        ctx.filter = "blur(58px)";
+        drawCoverImage(ctx, bgImg, -40, -40, 1160, 2000);
+        ctx.restore();
+
+        const topGlow = ctx.createLinearGradient(0, 0, 0, 520);
+        topGlow.addColorStop(0, "rgba(255, 219, 117, 0.18)");
+        topGlow.addColorStop(1, "rgba(255, 219, 117, 0)");
+        ctx.fillStyle = topGlow;
+        ctx.fillRect(0, 0, 1080, 520);
+
+        ctx.save();
+        roundedRect(ctx, 46, 114, 988, 578, 32);
+        ctx.clip();
+        drawCoverImage(ctx, heroImg, 46, 114, 988, 578);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = "rgba(169, 177, 110, 0.24)";
+        roundedRect(ctx, 68, 740, 944, 370, 36);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = "#F5F0E1";
+        ctx.font = '400 32px Inter, "Helvetica Neue", Arial, sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        const lines = wrapText(ctx, state.prompt, 760);
+        let y = 792;
+        for (const line of lines.slice(0, 9)) {
+          ctx.fillText(line, 540, y);
+          y += 44;
+        }
+
+        ctx.save();
+        ctx.fillStyle = "#111111";
+        roundedRect(ctx, 429, 1044, 112, 38, 19);
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = '700 18px Inter, "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText("KIMI", 485, 1053);
+        ctx.restore();
+
+        ctx.fillStyle = "#111111";
+        ctx.font = '600 18px Inter, "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText("Agent", 595, 1053);
+
+        ctx.fillStyle = "rgba(255,255,255,0.96)";
+        ctx.fillRect(0, 1491, 1080, 429);
+
+        ctx.save();
+        roundedRect(ctx, 485.66, 1595.12, 119.518, 119.518, 27.8874);
+        ctx.clip();
+        ctx.drawImage(logoImg, 485.66, 1595.12, 119.518, 119.518);
+        ctx.restore();
+
+        ctx.fillStyle = "#91897B";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = '400 37.28px "PingFang SC", "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText(state.title, 540, 1758);
+
+        ctx.fillStyle = "#625D52";
+        ctx.font = '600 37.28px "PingFang SC", "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText(state.subtitle, 540, 1806);
+
+        const link = document.createElement("a");
+        link.download = "thumbnail-card.png";
+        link.href = exportCanvas.toDataURL("image/png");
+        link.click();
+      }
+
+      heroInput.addEventListener("change", () => handleImageInput(heroInput, "heroSrc"));
+
+      promptInput.addEventListener("input", (event) => {
+        state.prompt = event.target.value;
+        syncView();
+      });
+
+      titleInput.addEventListener("input", (event) => {
+        state.title = event.target.value;
+        syncView();
+      });
+
+      subtitleInput.addEventListener("input", (event) => {
+        state.subtitle = event.target.value;
+        syncView();
+      });
+
+      downloadBtn.addEventListener("click", exportPNG);
+
+      resetBtn.addEventListener("click", () => {
+        Object.assign(state, defaults);
+        promptInput.value = defaults.prompt;
+        titleInput.value = defaults.title;
+        subtitleInput.value = defaults.subtitle;
+        heroInput.value = "";
+        state.heroMode = "image";
+        state.heroVideoSrc = "";
+        syncView();
+      });
+
+      if (isRenderMode) {
+        document.documentElement.classList.add("render-mode");
+        document.body.classList.add("render-mode");
+      }
+
+      window.cardBuilder = {
+        async setState(nextState = {}) {
+          Object.assign(state, nextState);
+          if (nextState.heroSrc || nextState.heroMode === "image") {
+            state.heroMode = nextState.heroMode || "image";
+          }
+          if (nextState.heroVideoSrc) {
+            state.heroMode = "video";
+          }
+          if (state.heroSrc) {
+            await waitForAssetLoad(state.heroSrc);
+          }
+          syncView();
+          if (isRenderMode) {
+            document.body.dataset.ready = "1";
+          }
+          if (state.heroMode === "video" && state.heroVideoSrc) {
+            await new Promise((resolve) => {
+              const done = () => resolve();
+              if (heroVideo.readyState >= 2) {
+                done();
+                return;
+              }
+              heroVideo.onloadeddata = done;
+            });
+          }
+        },
+        async playHeroVideo() {
+          if (state.heroMode !== "video") return;
+          heroVideo.currentTime = 0;
+          await heroVideo.play();
+        },
+        getState() {
+          return { ...state };
+        }
+      };
+
+      new ResizeObserver(() => syncScale()).observe(previewStage);
+      window.addEventListener("resize", syncScale);
+      syncView();
+    </script>
+  </body>
+</html>
