@@ -22,9 +22,9 @@ function loadPlaywright() {
 }
 
 const { chromium } = loadPlaywright();
-const HERO_RATIO_WIDTH = 996;
-const HERO_RATIO_HEIGHT = 578;
-const HERO_CAPTURE_WIDTH = 1440;
+const HERO_RATIO_WIDTH = 838;
+const HERO_RATIO_HEIGHT = 556;
+const HERO_CAPTURE_WIDTH = 1920;
 const HERO_CAPTURE_HEIGHT = Math.round(HERO_CAPTURE_WIDTH * HERO_RATIO_HEIGHT / HERO_RATIO_WIDTH);
 
 function parseArgs() {
@@ -159,11 +159,60 @@ function loadEntries(options) {
   }
 
   const tablePath = path.resolve(options.table);
-  const text = fs.readFileSync(tablePath, "utf8");
   if (tablePath.endsWith(".json")) {
+    const text = fs.readFileSync(tablePath, "utf8");
     return JSON.parse(text);
   }
+  if (tablePath.endsWith(".xlsx") || tablePath.endsWith(".xlsm") || tablePath.endsWith(".xls")) {
+    return parseExcelTable(tablePath);
+  }
+  const text = fs.readFileSync(tablePath, "utf8");
   return parseDelimited(text);
+}
+
+function parseExcelTable(tablePath) {
+  const python = `
+import json
+from openpyxl import load_workbook
+
+wb = load_workbook(${JSON.stringify(tablePath)}, data_only=True)
+ws = wb[wb.sheetnames[0]]
+rows = list(ws.iter_rows(values_only=True))
+if not rows:
+    print("[]")
+    raise SystemExit(0)
+
+headers = [str(x).strip() if x is not None else "" for x in rows[0]]
+items = []
+for row in rows[1:]:
+    if not any(cell is not None and str(cell).strip() for cell in row):
+        continue
+    item = {}
+    for i, key in enumerate(headers):
+        value = "" if i >= len(row) or row[i] is None else str(row[i]).strip()
+        item[key] = value
+    items.append(item)
+
+print(json.dumps(items, ensure_ascii=False))
+`;
+
+  const output = execFileSync("python3", ["-c", python], { encoding: "utf8" }).trim();
+  return JSON.parse(output);
+}
+
+function normalizeEntry(entry) {
+  const title = String(entry.title || entry.Title || "").trim();
+  const prompt = String(entry.prompt || entry.Prompt || "").trim();
+  const url = String(
+    entry.url ||
+    entry.URL ||
+    entry.link ||
+    entry.Link ||
+    entry.href ||
+    ""
+  ).trim();
+
+  return { title, prompt, url };
 }
 
 function findBinary(name) {
@@ -355,7 +404,7 @@ async function captureHeroScreenshot(url, outputPath) {
     await page.screenshot({
       path: outputPath,
       type: "jpeg",
-      quality: 92
+      quality: 95
     });
   } finally {
     await context.close();
@@ -437,11 +486,9 @@ async function renderEditedVideo(templatePath, heroImagePath, rawVideoPath, prom
 }
 
 async function runEntry(entry, options, templatePath) {
-  const title = entry.title;
-  const prompt = entry.prompt;
-  const url = entry.url;
+  const { title, prompt, url } = normalizeEntry(entry);
   const baseName = safeName(title);
-  const outputDir = path.resolve(options.output);
+  const outputDir = path.join(path.resolve(options.output), baseName);
   ensureDir(outputDir);
 
   const rawVideo = path.join(outputDir, `${baseName}_raw.mp4`);
@@ -475,10 +522,11 @@ async function main() {
   }
 
   for (const entry of entries) {
-    if (!entry.url || !entry.prompt || !entry.title) {
-      throw new Error("Each row must include url, prompt, and title");
+    const normalized = normalizeEntry(entry);
+    if (!normalized.url || !normalized.prompt || !normalized.title) {
+      throw new Error("Each row must include title, prompt, and a url/link column");
     }
-    await runEntry(entry, options, templatePath);
+    await runEntry(normalized, options, templatePath);
   }
 
   console.log("\nDone.");

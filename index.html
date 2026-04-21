@@ -266,16 +266,28 @@
       .preview-content {
         position: absolute;
         inset: 0;
-        padding: 104px 42px 0;
+        z-index: 1;
+      }
+
+      .top-stack {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 1349px;
         display: flex;
         flex-direction: column;
-        z-index: 1;
+        align-items: center;
+        justify-content: center;
+        gap: 56px;
       }
 
       .hero {
         position: relative;
-        height: 578px;
-        border-radius: 30px;
+        flex: 0 0 auto;
+        width: 838px;
+        height: 556px;
+        border-radius: 69px;
         overflow: hidden;
         background: rgba(0, 0, 0, 0.12);
         box-shadow:
@@ -313,13 +325,12 @@
       }
 
       .prompt-card {
-        margin-top: 62px;
-        margin-left: 25px;
-        margin-right: 25px;
-        border-radius: 36px;
-        padding: 52px 78px 42px;
-        background: rgba(181, 191, 117, 0.24);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+        flex: 0 0 auto;
+        width: 834px;
+        border-radius: 95px;
+        padding: 60px 72px 44px;
+        background: rgba(255, 255, 255, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
       }
@@ -333,53 +344,44 @@
       }
 
       .brand-lockup {
-        margin-top: 22px;
-        display: flex;
+        display: grid;
+        place-items: center;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
+        margin-top: 44px;
       }
 
-      .brand-pill {
-        background: #111;
-        color: #fff;
-        border-radius: 999px;
-        padding: 4px 14px 5px;
-        font-size: 20px;
-        font-weight: 700;
-        line-height: 1;
-      }
-
-      .brand-word {
-        color: #111;
-        font-size: 20px;
-        font-weight: 600;
+      .brand-lockup img {
+        width: 160px;
+        height: auto;
+        display: block;
       }
 
       .footer {
-        margin-top: auto;
-        height: 429px;
+        position: absolute;
+        left: 0;
+        top: 1349px;
+        width: 1080px;
+        height: 571px;
         background: rgba(255, 255, 255, 0.96);
-        margin-left: -42px;
-        margin-right: -42px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 34px;
+        display: block;
       }
 
       .footer-badge {
-        width: 119.518px;
-        height: 119.518px;
-        border-radius: 27.8874px;
-        background: #000;
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 232px;
+        height: 80px;
         display: grid;
         place-items: center;
-        overflow: hidden;
       }
 
       .footer-copy {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 220px;
         text-align: center;
         color: #8d8677;
         font-family: "PingFang SC", "Helvetica Neue", Arial, sans-serif;
@@ -391,13 +393,14 @@
         display: block;
         color: #615d52;
         font-weight: 600;
+        margin-top: 2px;
       }
 
       .footer-badge img {
-        width: 100%;
-        height: 100%;
+        width: auto;
+        height: 90%;
         display: block;
-        object-fit: cover;
+        object-fit: contain;
       }
 
       .hint {
@@ -467,22 +470,23 @@
           <div class="bg-glow" id="bgGlow"></div>
           <div class="bg-tint"></div>
           <div class="preview-content">
-            <div class="hero">
-              <img class="hero-image" id="heroPreview" src="./assets/hero.png" alt="Hero preview" />
-              <video class="hero-video" id="heroVideo" muted playsinline preload="auto"></video>
-            </div>
+            <div class="top-stack">
+              <div class="hero">
+                <img class="hero-image" id="heroPreview" src="./assets/hero.png" alt="Hero preview" />
+                <video class="hero-video" id="heroVideo" muted playsinline preload="auto"></video>
+              </div>
 
-            <div class="prompt-card">
-              <div class="prompt-copy" id="promptPreview"></div>
-              <div class="brand-lockup">
-                <span class="brand-pill">KIMI</span>
-                <span class="brand-word">Agent</span>
+              <div class="prompt-card" id="promptCard">
+                <div class="prompt-copy" id="promptPreview"></div>
+                <div class="brand-lockup">
+                  <img id="kimiAgentLogoPreview" src="./assets/kimi-agent-logo.png" alt="Kimi Agent" />
+                </div>
               </div>
             </div>
 
             <footer class="footer">
               <div class="footer-badge" aria-hidden="true">
-                <img src="./assets/kimi-icon-rounded-corner.png" alt="" />
+                <img id="kimiFooterLogoPreview" src="./assets/kimi-footer-logo.png" alt="" />
               </div>
               <div class="footer-copy">
                 <span id="titlePreview"></span>
@@ -495,6 +499,7 @@
       <canvas id="exportCanvas" width="1080" height="1920"></canvas>
     </main>
 
+    <script src="./assets/asset-data.js"></script>
     <script>
       const defaults = {
         heroSrc: "./assets/hero.png",
@@ -520,13 +525,46 @@
       const heroPreview = document.getElementById("heroPreview");
       const heroVideo = document.getElementById("heroVideo");
       const heroContainer = document.querySelector(".hero");
+      const kimiAgentLogoPreview = document.getElementById("kimiAgentLogoPreview");
+      const kimiFooterLogoPreview = document.getElementById("kimiFooterLogoPreview");
+      const promptCard = document.getElementById("promptCard");
       const previewCard = document.getElementById("previewCard");
       const previewStage = document.getElementById("previewStage");
       const downloadBtn = document.getElementById("downloadBtn");
       const resetBtn = document.getElementById("resetBtn");
       const exportCanvas = document.getElementById("exportCanvas");
-      const logoSrc = "./assets/kimi-icon-rounded-corner.png";
+      const assetBundle = window.__CARD_ASSETS__ || {};
+      const logoSrc = assetBundle.KIMI_FOOTER_LOGO_DATA_URL || "./assets/kimi-footer-logo.png";
+      const kimiAgentLogoSrc = assetBundle.KIMI_AGENT_LOGO_DATA_URL || "./assets/kimi-agent-logo.png";
       const isRenderMode = new URLSearchParams(window.location.search).get("render") === "1";
+      const layout = {
+        frameWidth: 1080,
+        frameHeight: 1920,
+        topAreaHeight: 1349,
+        heroWidth: 838,
+        heroHeight: 556,
+        heroRadius: 69,
+        stackGap: 56,
+        promptWidth: 834,
+        promptMinHeight: 0,
+        promptRadius: 95,
+        promptPaddingTop: 60,
+        promptPaddingX: 72,
+        promptPaddingBottom: 44,
+        promptBrandGap: 44,
+        promptTextMaxWidth: 688,
+        promptLineHeight: 44,
+        agentWidth: 160,
+        agentHeight: 62,
+        footerTop: 1349,
+        footerHeight: 571,
+        footerLogoX: 436,
+        footerLogoY: 1439,
+        footerLogoW: 209,
+        footerLogoH: 72,
+        footerTitleY: 1569,
+        footerSubtitleY: 1618
+      };
 
       function setBackground(src) {
         const backgroundImage = `url("${src}")`;
@@ -555,6 +593,8 @@
         promptPreview.textContent = state.prompt;
         titlePreview.textContent = state.title;
         subtitlePreview.textContent = state.subtitle;
+        kimiAgentLogoPreview.src = kimiAgentLogoSrc;
+        kimiFooterLogoPreview.src = logoSrc;
         if (state.heroMode === "video") {
           heroContainer.classList.add("is-video");
           heroVideo.src = state.heroVideoSrc;
@@ -569,7 +609,43 @@
           heroVideo.load();
         }
         setBackground(state.heroSrc);
+        applyDynamicLayout();
         syncScale();
+      }
+
+      function computePromptMetrics(ctx) {
+        const lines = wrapText(ctx, state.prompt, layout.promptTextMaxWidth);
+        const textHeight = Math.max(layout.promptLineHeight, lines.length * layout.promptLineHeight);
+        const naturalHeight =
+          layout.promptPaddingTop +
+          textHeight +
+          layout.promptBrandGap +
+          layout.agentHeight +
+          layout.promptPaddingBottom;
+        const cardHeight = Math.max(layout.promptMinHeight, naturalHeight);
+        return { lines, textHeight, cardHeight };
+      }
+
+      function computeStackLayout(ctx) {
+        const { lines, cardHeight } = computePromptMetrics(ctx);
+        const totalHeight = layout.heroHeight + layout.stackGap + cardHeight;
+        const top = Math.round((layout.topAreaHeight - totalHeight) / 2);
+        return {
+          lines,
+          cardHeight,
+          heroX: Math.round((layout.frameWidth - layout.heroWidth) / 2),
+          heroY: top,
+          promptX: Math.round((layout.frameWidth - layout.promptWidth) / 2),
+          promptY: top + layout.heroHeight + layout.stackGap
+        };
+      }
+
+      function applyDynamicLayout() {
+        const measureCanvas = document.createElement("canvas");
+        const measureCtx = measureCanvas.getContext("2d");
+        measureCtx.font = '400 32px Inter, "Helvetica Neue", Arial, sans-serif';
+        const { cardHeight } = computeStackLayout(measureCtx);
+        promptCard.style.height = `${cardHeight}px`;
       }
 
       function readFileAsDataURL(file) {
@@ -651,92 +727,104 @@
       }
 
       async function exportPNG() {
-        const ctx = exportCanvas.getContext("2d");
-        const [bgImg, heroImg] = await Promise.all([
-          loadImage(state.heroSrc),
-          loadImage(state.heroSrc)
-        ]);
-        const logoImg = await loadImage(logoSrc);
+        try {
+          await document.fonts.ready;
+          const ctx = exportCanvas.getContext("2d");
+          const [bgImg, heroImg] = await Promise.all([
+            loadImage(state.heroSrc),
+            loadImage(state.heroSrc)
+          ]);
+          const [logoImg, kimiAgentLogoImg] = await Promise.all([
+            loadImage(logoSrc),
+            loadImage(kimiAgentLogoSrc)
+          ]);
 
-        ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+          ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-        ctx.save();
-        ctx.filter = "blur(22px)";
-        drawCoverImage(ctx, bgImg, -60, -60, 1200, 2040);
-        ctx.restore();
+          ctx.save();
+          ctx.filter = "blur(22px)";
+          drawCoverImage(ctx, bgImg, -60, -60, 1200, 2040);
+          ctx.restore();
 
-        ctx.save();
-        ctx.globalAlpha = 0.44;
-        ctx.filter = "blur(58px)";
-        drawCoverImage(ctx, bgImg, -40, -40, 1160, 2000);
-        ctx.restore();
+          ctx.save();
+          ctx.globalAlpha = 0.44;
+          ctx.filter = "blur(58px)";
+          drawCoverImage(ctx, bgImg, -40, -40, 1160, 2000);
+          ctx.restore();
 
-        const topGlow = ctx.createLinearGradient(0, 0, 0, 520);
-        topGlow.addColorStop(0, "rgba(255, 219, 117, 0.18)");
-        topGlow.addColorStop(1, "rgba(255, 219, 117, 0)");
-        ctx.fillStyle = topGlow;
-        ctx.fillRect(0, 0, 1080, 520);
+          const topGlow = ctx.createLinearGradient(0, 0, 0, 520);
+          topGlow.addColorStop(0, "rgba(255, 219, 117, 0.18)");
+          topGlow.addColorStop(1, "rgba(255, 219, 117, 0)");
+          ctx.fillStyle = topGlow;
+          ctx.fillRect(0, 0, layout.frameWidth, 520);
 
-        ctx.save();
-        roundedRect(ctx, 46, 114, 988, 578, 32);
-        ctx.clip();
-        drawCoverImage(ctx, heroImg, 46, 114, 988, 578);
-        ctx.restore();
+          ctx.font = '400 32px Inter, "Helvetica Neue", Arial, sans-serif';
+          const stack = computeStackLayout(ctx);
 
-        ctx.save();
-        ctx.fillStyle = "rgba(169, 177, 110, 0.24)";
-        roundedRect(ctx, 68, 740, 944, 370, 36);
-        ctx.fill();
-        ctx.restore();
+          ctx.save();
+          roundedRect(ctx, stack.heroX, stack.heroY, layout.heroWidth, layout.heroHeight, layout.heroRadius);
+          ctx.clip();
+          drawCoverImage(ctx, heroImg, stack.heroX, stack.heroY, layout.heroWidth, layout.heroHeight);
+          ctx.restore();
 
-        ctx.fillStyle = "#F5F0E1";
-        ctx.font = '400 32px Inter, "Helvetica Neue", Arial, sans-serif';
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
+          ctx.save();
+          ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+          roundedRect(ctx, stack.promptX, stack.promptY, layout.promptWidth, stack.cardHeight, layout.promptRadius);
+          ctx.fill();
+          ctx.restore();
 
-        const lines = wrapText(ctx, state.prompt, 760);
-        let y = 792;
-        for (const line of lines.slice(0, 9)) {
-          ctx.fillText(line, 540, y);
-          y += 44;
+          ctx.fillStyle = "#F5F0E1";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          let y = stack.promptY + layout.promptPaddingTop;
+          for (const line of stack.lines) {
+            ctx.fillText(line, layout.frameWidth / 2, y);
+            y += layout.promptLineHeight;
+          }
+
+          const agentX = Math.round((layout.frameWidth - layout.agentWidth) / 2);
+          const agentY = Math.round(stack.promptY + stack.cardHeight - layout.promptPaddingBottom - layout.agentHeight);
+          ctx.drawImage(kimiAgentLogoImg, agentX, agentY, layout.agentWidth, layout.agentHeight);
+
+          ctx.fillStyle = "rgba(255,255,255,0.96)";
+          ctx.fillRect(0, layout.footerTop, layout.frameWidth, layout.footerHeight);
+
+          ctx.drawImage(logoImg, layout.footerLogoX, layout.footerLogoY, layout.footerLogoW, layout.footerLogoH);
+
+          ctx.fillStyle = "#91897B";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          ctx.font = '400 37.28px "PingFang SC", "Helvetica Neue", Arial, sans-serif';
+          ctx.fillText(state.title, 540, layout.footerTitleY);
+
+          ctx.fillStyle = "#625D52";
+          ctx.font = '600 37.28px "PingFang SC", "Helvetica Neue", Arial, sans-serif';
+          ctx.fillText(state.subtitle, 540, layout.footerSubtitleY);
+
+          const blob = await new Promise((resolve, reject) => {
+            exportCanvas.toBlob((value) => {
+              if (value) resolve(value);
+              else reject(new Error("Failed to render PNG blob"));
+            }, "image/png");
+          });
+
+          const link = document.createElement("a");
+          const objectUrl = URL.createObjectURL(blob);
+          link.download = "thumbnail-card.png";
+          link.href = objectUrl;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        } catch (error) {
+          console.error(error);
+          const message = String(error && error.message ? error.message : error);
+          if (message.includes("Tainted canvases")) {
+            alert("Download PNG failed because the current image source is not export-safe. Upload the card image once again in the editor, then retry.");
+          } else {
+            alert(`Download PNG failed: ${message}`);
+          }
         }
-
-        ctx.save();
-        ctx.fillStyle = "#111111";
-        roundedRect(ctx, 429, 1044, 112, 38, 19);
-        ctx.fill();
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = '700 18px Inter, "Helvetica Neue", Arial, sans-serif';
-        ctx.fillText("KIMI", 485, 1053);
-        ctx.restore();
-
-        ctx.fillStyle = "#111111";
-        ctx.font = '600 18px Inter, "Helvetica Neue", Arial, sans-serif';
-        ctx.fillText("Agent", 595, 1053);
-
-        ctx.fillStyle = "rgba(255,255,255,0.96)";
-        ctx.fillRect(0, 1491, 1080, 429);
-
-        ctx.save();
-        roundedRect(ctx, 485.66, 1595.12, 119.518, 119.518, 27.8874);
-        ctx.clip();
-        ctx.drawImage(logoImg, 485.66, 1595.12, 119.518, 119.518);
-        ctx.restore();
-
-        ctx.fillStyle = "#91897B";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        ctx.font = '400 37.28px "PingFang SC", "Helvetica Neue", Arial, sans-serif';
-        ctx.fillText(state.title, 540, 1758);
-
-        ctx.fillStyle = "#625D52";
-        ctx.font = '600 37.28px "PingFang SC", "Helvetica Neue", Arial, sans-serif';
-        ctx.fillText(state.subtitle, 540, 1806);
-
-        const link = document.createElement("a");
-        link.download = "thumbnail-card.png";
-        link.href = exportCanvas.toDataURL("image/png");
-        link.click();
       }
 
       heroInput.addEventListener("change", () => handleImageInput(heroInput, "heroSrc"));
